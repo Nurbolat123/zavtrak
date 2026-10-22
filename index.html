@@ -2,27 +2,34 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no" />
   <title>Дежурный по завтракам</title>
   <style>
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
     html, body {
       margin: 0;
-      height: 100%;
-      font-family: 'Segoe UI', sans-serif;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
       color: #222;
-      overflow: hidden;
       background: #f5fbff;
+    }
+
+    body {
+      overflow-x: hidden;
     }
 
     /* Фон со вкусностями */
     .background {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: -80px;
+      left: -80px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      grid-template-columns: repeat(var(--cols, 5), 100px);
       grid-auto-rows: 100px;
       justify-items: center;
       align-items: center;
@@ -35,6 +42,11 @@
     .emoji {
       font-size: 2.8rem;
       user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Анимация только у части эмодзи — меньше нагрузка на батарею */
+    .emoji.float {
       animation: float 6s ease-in-out infinite;
     }
 
@@ -43,27 +55,35 @@
       50% { transform: translateY(-8px); }
     }
 
+    /* Сдвиг не больше запаса (80px), чтобы по краям не появлялись пустые полосы */
     @keyframes moveBackground {
       0% { transform: translate(0, 0); }
       50% { transform: translate(-50px, -30px); }
-      100% { transform: translate(30px, 60px); }
+      100% { transform: translate(50px, 50px); }
     }
 
     /* Центральный контент */
     .content {
       position: relative;
       z-index: 1;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       text-align: center;
-      height: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 24px 16px;
+      padding-top: calc(24px + env(safe-area-inset-top));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      padding-left: calc(16px + env(safe-area-inset-left));
+      padding-right: calc(16px + env(safe-area-inset-right));
     }
 
     h1 {
       font-size: 2rem;
-      margin-bottom: 0.5rem;
+      margin: 0 0 0.5rem;
       background: rgba(255, 255, 255, 0.7);
       padding: 10px 20px;
       border-radius: 10px;
@@ -71,68 +91,69 @@
 
     h2 {
       font-size: 2.8rem;
+      margin: 0.5rem 0 1.5rem;
       color: #0078ff;
       background: rgba(255, 255, 255, 0.7);
       padding: 10px 20px;
       border-radius: 10px;
-      opacity: 0;
-      transform: scale(0.8);
-      animation: appear 1s ease-out forwards, pulse 1.5s infinite alternate;
-      animation-delay: 0.4s;
+      /* Видим по умолчанию: если анимация не сработает, имя всё равно будет на экране */
+      animation:
+        appear 1s ease-out 0.2s backwards,
+        pulse 1.5s ease-in-out 1.2s infinite alternate;
     }
 
     @keyframes appear {
+      from { opacity: 0; transform: scale(0.8); }
       to { opacity: 1; transform: scale(1); }
     }
 
     @keyframes pulse {
       from { transform: scale(1); color: #0078ff; }
-      to { transform: scale(1.1); color: #005ecb; }
-    }
-
-    footer {
-      position: absolute;
-      bottom: 90px;
-      font-size: 0.9rem;
-      color: #555;
-      z-index: 1;
-      background: rgba(255, 255, 255, 0.7);
-      padding: 5px 15px;
-      border-radius: 10px;
+      to { transform: scale(1.06); color: #005ecb; }
     }
 
     /* Кнопка */
     .toggle-btn {
-      position: absolute;
-      bottom: 25px;
-      z-index: 2;
-      padding: 10px 20px;
+      padding: 12px 22px;
       background: #0078ff;
       color: white;
       border: none;
       border-radius: 8px;
+      font: inherit;
       font-size: 1rem;
       cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      -webkit-tap-highlight-color: transparent;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
       transition: background 0.3s;
     }
 
-    .toggle-btn:hover {
+    .toggle-btn:hover,
+    .toggle-btn:active {
       background: #005ecb;
     }
 
-    /* Всплывающее окно */
+    /* Всплывающее окно (в потоке, чтобы не налезало на заголовки и прокручивалось) */
     .popup {
-      position: absolute;
-      bottom: 80px;
+      box-sizing: border-box;
+      margin-top: 16px;
+      width: min(92vw, 320px);
+      max-height: 60vh;
+      max-height: 60dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       background: rgba(255, 255, 255, 0.95);
       padding: 15px 20px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      width: 260px;
       text-align: left;
       display: none;
       animation: fadeIn 0.3s ease-out;
+    }
+
+    .popup.open {
+      display: block;
     }
 
     @keyframes fadeIn {
@@ -157,8 +178,13 @@
 
     .popup p {
       font-size: 0.9rem;
-      margin-top: 10px;
+      margin: 10px 0 0;
       color: #444;
+    }
+
+    .popup a {
+      color: #0078ff;
+      text-decoration: none;
     }
 
     @media (max-width: 600px) {
@@ -166,114 +192,136 @@
       h2 { font-size: 2rem; }
       .emoji { font-size: 2rem; }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .background, .emoji.float, h2, .popup {
+        animation: none;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="background" id="bg"></div>
+  <div class="background" id="bg" aria-hidden="true"></div>
 
   <div class="content">
     <h1>Дежурный, который принесет завтрак в пятницу:</h1>
     <h2 id="name">Загрузка...</h2>
-    <footer></footer>
+
+    <button class="toggle-btn" id="toggleBtn" type="button" aria-expanded="false" aria-controls="popup">Показать список продуктов</button>
 
     <div class="popup" id="popup">
       <h3>🛒 Список продуктов:</h3>
-      <ul>
-        <li>Беляши - 10 шт.</li>
-        <li>Пирожок с картошкой - 17 шт.</li>
-	<li>Пирожок с капустой - 8 шт.</li>
-	<li>Сосиска в тесте - 7 шт.</li>
-        <li>Блины с творогом - 7 шт.</li>
-        <li>Блины со сгущенкой - 7 шт.</li>
-		<li>Самса - 5 шт.</li>
-		<li>Заварное - 1 шт.</li>
-		<li>Вафли - 1 шт.</li>
-      </ul>
-      <p>📞 Для заказа: <strong>+7 775 417 57 60</strong></p>
-      <p>💬 <a href="https://wa.me/77754175760?text=Здравствуйте! Хочу%20заказать%20завтрак%20на%20пятницу:%0AБеляши%20-%2010%20шт.%0AПирожок%20с%20картошкой%20-%2017%20шт.%0AПирожок%20с%20капустой%20-%208%20шт.%0AСосиска%20в%20тесте%20-%207%20шт.%0AБлины%20с%20творогом%20-%207%20шт.%0AБлины%20со%20сгущенкой%20-%207%20шт.%0AСамса%20-%205%20шт.%0AЗаварное%20-%201%20шт.%0AВафли%20-%201%20шт.
-" target="_blank" style="color:#0078ff; text-decoration:none;">Написать в WhatsApp</a></p>
+      <ul id="itemsList"></ul>
+      <p>📞 Для заказа: <a href="tel:+77754175760"><strong>+7 775 417 57 60</strong></a></p>
+      <p>💬 <a id="waLink" href="https://wa.me/77754175760" target="_blank" rel="noopener noreferrer">Написать в WhatsApp</a></p>
     </div>
-
-    <button class="toggle-btn" id="toggleBtn">Показать список продуктов</button>
   </div>
 
 <script>
   // --- Фон ---
-  const emojis = ["🥐", "🥞", "🥟", "🍩", "🥯", "🥮", "🥧", "🫓", "🍪"];
+  // 🫓 (iOS 14.2+) заменён на 🍞, чтобы на старых iPhone не было «квадратиков»
+  const emojis = ["🥐", "🥞", "🥟", "🍩", "🥯", "🥮", "🥧", "🍞", "🍪"];
   const bg = document.getElementById('bg');
-  const cols = Math.ceil(window.innerWidth / 100);
-  const rows = Math.ceil(window.innerHeight / 100);
+  // +160px — запас под смещение фона (top/left: -80px), +1 — на округление
+  const cols = Math.ceil((window.innerWidth + 160) / 100) + 1;
+  const rows = Math.ceil((window.innerHeight + 160) / 100) + 1;
+  bg.style.setProperty('--cols', cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const emoji = document.createElement('div');
-      emoji.className = 'emoji';
+      emoji.className = 'emoji' + ((r + c) % 3 === 0 ? ' float' : '');
       emoji.textContent = emojis[(r + c) % emojis.length];
       bg.appendChild(emoji);
     }
   }
 
- // --- Список дежурных ---
-const employees = [
-  "Асемгуль", "Гулжазира", "Роза", "Жамель", "Гульдерай",
-  "Альфия", "Аңсаған", "Жанара", "Радмила", "Арман",
-  "Ольга", "Мадина", "Әйгерім", "Мақсат", "Данияр", "Бекжан",
-  "Рустем", "Айбарша", "Динара", "Базик",
-  "Зарина", "Айзат", "Римма", "Сурия"
-];
+  // --- Список дежурных ---
+  const employees = [
+    "Асемгуль", "Гулжазира", "Роза", "Жамель", "Гульдерай",
+    "Альфия", "Аңсаған", "Жанара", "Радмила", "Арман",
+    "Ольга", "Мадина", "Әйгерім", "Мақсат", "Данияр", "Бекжан",
+    "Рустем", "Айбарша", "Динара", "Базик",
+    "Зарина", "Айзат", "Римма", "Сурия"
+  ];
 
-	// Сегодня по Алматы (без времени)
-const today = new Date(
-  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Almaty" })
-);
+  // --- Список продуктов (единый источник для списка и для WhatsApp) ---
+  const items = [
+    ["Беляши", 10],
+    ["Пирожок с картошкой", 17],
+    ["Пирожок с капустой", 8],
+    ["Сосиска в тесте", 7],
+    ["Блины с творогом", 7],
+    ["Блины со сгущенкой", 7],
+    ["Самса", 5],
+    ["Заварное", 1],
+    ["Вафли", 1]
+  ];
 
-// 🔥 ЯКОРЬ: ЧЕТВЕРГ 23.04.2026 — Асемгуль
-const startThursday = new Date("2026-04-23");
+  // Сегодняшняя календарная дата в Алматы как UTC-полночь (не зависит от часового пояса устройства
+  // и от формата локали). Результат: число миллисекунд Date.UTC(год, месяц, день).
+  function almatyToday() {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Almaty", year: "numeric", month: "numeric", day: "numeric"
+      }).formatToParts(new Date());
+      const get = (type) => parseInt(parts.find((p) => p.type === type).value, 10);
+      const result = Date.UTC(get("year"), get("month") - 1, get("day"));
+      if (!isNaN(result)) return result;
+    } catch (e) { /* Intl с часовыми поясами недоступен — используем запасной вариант */ }
+    // Запасной вариант: Алматы = UTC+5
+    const d = new Date(Date.now() + 5 * 3600000);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
 
-// Сколько дней прошло
-const diffDays = Math.floor((today - startThursday) / 86400000);
+  const today = new Date(almatyToday());
 
-// Номер недели от четверга
-const weekNumber = Math.floor(diffDays / 7);
+  // 🔥 ЯКОРЬ: ЧЕТВЕРГ 23.04.2026 — Асемгуль
+  const startThursday = Date.UTC(2026, 3, 23);
 
-// Дежурный
-const dutyName = employees[(weekNumber + employees.length) % employees.length];
+  // Сколько дней прошло
+  const diffDays = Math.floor((today.getTime() - startThursday) / 86400000);
 
-// День недели (Алматы)
-const day = today.getDay(); // 4 = чт, 5 = пт
-const nameEl = document.getElementById("name");
+  // Номер недели от четверга
+  const weekNumber = Math.floor(diffDays / 7);
 
-if (day === 4) {
-  nameEl.textContent = `Завтра дежурит: ${dutyName} ☕`;
-} else if (day === 5) {
-  nameEl.textContent = `Сегодня дежурит: ${dutyName} 🥐`;
-} else {
-  nameEl.textContent = "Ждите следующей пятницы ☕🥐";
-}
+  // Дежурный (корректный модуль и для дат до якоря)
+  const dutyName = employees[((weekNumber % employees.length) + employees.length) % employees.length];
+
+  // День недели в Алматы: 4 = чт, 5 = пт
+  const day = today.getUTCDay();
+  const nameEl = document.getElementById("name");
+
+  if (day === 4) {
+    nameEl.textContent = `Завтра дежурит: ${dutyName} ☕`;
+  } else if (day === 5) {
+    nameEl.textContent = `Сегодня дежурит: ${dutyName} 🥐`;
+  } else {
+    nameEl.textContent = "Ждите следующей пятницы ☕🥐";
+  }
+
+  // --- Список продуктов и ссылка WhatsApp ---
+  const list = document.getElementById("itemsList");
+  items.forEach(([title, count]) => {
+    const li = document.createElement("li");
+    li.textContent = `${title} - ${count} шт.`;
+    list.appendChild(li);
+  });
+
+  const orderText = "Здравствуйте! Хочу заказать завтрак на пятницу:\n" +
+    items.map(([title, count]) => `${title} - ${count} шт.`).join("\n");
+  document.getElementById("waLink").href =
+    "https://wa.me/77754175760?text=" + encodeURIComponent(orderText);
 
   // --- Кнопка и всплывающее окно ---
   const toggleBtn = document.getElementById("toggleBtn");
   const popup = document.getElementById("popup");
-  let visible = false;
 
   toggleBtn.addEventListener("click", () => {
-    visible = !visible;
-    popup.style.display = visible ? "block" : "none";
+    const visible = popup.classList.toggle("open");
+    toggleBtn.setAttribute("aria-expanded", String(visible));
     toggleBtn.textContent = visible ? "Скрыть список продуктов" : "Показать список продуктов";
+    if (visible) popup.scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
